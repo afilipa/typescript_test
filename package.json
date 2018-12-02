@@ -25,7 +25,6 @@
     "@types/winston": "^2.3.0",
     "bluebird": "^3.5.0",
     "command-line-args": "^5.0.2",
-    "command-line-commands": "^2.0.1",
     "pg-promise": "^5.6.4",
     "ramda": "^0.23.0",
     "request": "^2.81.0",
