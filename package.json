@@ -4,7 +4,11 @@
   "description": "pg-promise-github-test",
   "main": "index.js",
   "scripts": {
-    "test": "node ./node_modules/ts-node/dist/bin.js server.ts"
+    "test": "node ./node_modules/ts-node/dist/bin.js server.ts",
+    "listLisbon": "node ./node_modules/ts-node/dist/bin.js server.ts --lisbon",
+    "userIn": "node ./node_modules/ts-node/dist/bin.js server.ts --user afilipa",
+    "perLocation": "node ./node_modules/ts-node/dist/bin.js server.ts --perLoc \"Lisbon, Portugal\"",
+    "stats": "node ./node_modules/ts-node/dist/bin.js server.ts --stats"
   },
   "keywords": [
     "github",
@@ -20,6 +24,8 @@
     "@types/request-promise": "^4.1.33",
     "@types/winston": "^2.3.0",
     "bluebird": "^3.5.0",
+    "command-line-args": "^5.0.2",
+    "command-line-commands": "^2.0.1",
     "pg-promise": "^5.6.4",
     "ramda": "^0.23.0",
     "request": "^2.81.0",
