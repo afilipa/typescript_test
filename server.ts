@@ -1,6 +1,7 @@
 const pgPromise = require('pg-promise');
 const R = require('ramda');
 const request = require('request-promise');
+const question = require('prompt-sync')();
 
 // Limit the amount of debugging of SQL expressions
 const trimLogsSize: number = 200;
@@ -112,17 +113,26 @@ function processOptions() {
           },
           json: true
         })
-          .then((data: GithubUsers) =>
-            db.one(`INSERT INTO github_users (login, name, company, location) 
-          VALUES ($[login], $[name], $[company], $[location]) RETURNING id`, data)
-          ).then(({ id }) => console.log(id))
-          .then(() => (keys.indexOf('user') == keys.length - 1) ? process.exit(0) : "");
+          .then((data: GithubUsers) => {
+            console.log("The info to insert in db is: " +
+              JSON.stringify({ 'login': data.login, 'name': data.name, 'company': data.company, 'location': data.location }));
+            let x = question("Do you confirm this data? (y/n)");
+            if (x.toLowerCase() == 'y') {
+              return db.one(`INSERT INTO github_users (login, name, company, location) 
+                VALUES ($[login], $[name], $[company], $[location]) RETURNING id`, data)
+            }
+            else { console.log("User was not inserted this time"); return { id: -1 } };
+          })
+          .then(({ id }) => (id > 0) ? console.log(id) : '')
+          .then(() => { (keys.indexOf('user') == keys.length - 1) ? process.exit(0) : "" });
         break;
       default:
         break;
     }
   }
 }
+
+
 
 /* returns a list of users in given location */
 function UsersInLocation(loc, indexCommand) {
