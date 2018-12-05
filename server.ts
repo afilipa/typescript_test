@@ -1,7 +1,7 @@
 const pgPromise = require('pg-promise');
 const R = require('ramda');
 const request = require('request-promise');
-const question = require('prompt-sync')();
+const question = require('inquirer');
 
 // Limit the amount of debugging of SQL expressions
 const trimLogsSize: number = 200;
@@ -16,8 +16,10 @@ const optionDefinitions = [
   { name: 'perLoc', alias: 'L', type: String },
   { name: 'lisbon', alias: 'l', type: Boolean },
   { name: 'stats', alias: 's', type: Boolean },
-  { name: 'user', alias: 'u', type: String }
+  { name: 'user', alias: 'u', type: String },
+  { name: 'help', alias: 'h', type: Boolean }
 ]
+
 const commandLineArgs = require('command-line-args');
 const optionsCLI = commandLineArgs(optionDefinitions);
 
@@ -69,21 +71,44 @@ interface GithubUsers {
 
 /* creates table IF NOT EXISTS already */
 /* introduces a primary key and unique constraint on table creation */
-db.none(`CREATE TABLE IF NOT EXISTS github_users ( 
-  id BIGSERIAL PRIMARY KEY NOT NULL,
-  login TEXT NOT NULL UNIQUE,
-  name TEXT,
-  company TEXT,
-  location TEXT)
-`)
-  .then(() => console.log("\nWe have database! Let's do lovely things now ;)"))
-  .then(() => (!Object.keys(optionsCLI).length || commandErrors()) ? process.exit(0) : processOptions());
-
+db.any('select exists(select 1 from information_schema.tables where table_name=\'github_users\')')
+  .then(data => data.map(row => row.exists)[0])
+  .then(bool => (!bool) ? db.none(`CREATE TABLE github_users ( 
+      id BIGSERIAL PRIMARY KEY NOT NULL,
+      login TEXT NOT NULL UNIQUE,
+      name TEXT,
+      company TEXT,
+      location TEXT)
+    `)
+    .then(() => console.log("\nWe have database! Let's do lovely things now ;)"))
+    : console.log("\nDatabase already was ready for use :)")
+  )
+  .then(() => {
+    if (!Object.keys(optionsCLI).length || commandErrors()) {
+      helpConstructor().then((str) => { console.log(str); process.exit(0) })
+    }
+    else { processOptions() }
+  });
 
 const keys = Object.keys(optionsCLI);
 
+
+function helpConstructor() {
+  let helps = '\nUsage of options available:';
+
+  return new Promise((resolve, reject) => {
+    for (let i in optionDefinitions) {
+      helps += '\n --' + optionDefinitions[i].name;
+      helps += (optionDefinitions[i].type.toString().includes('Boolean')) ? "" : " <argument>";
+    }
+    resolve(helps);
+
+    reject();
+  });
+}
 /* check errors in given commands */
 function commandErrors() {
+
   for (let i in keys) {
     if (optionsCLI[keys[i]] == null) {
       console.log("The given option --" + keys[i] + " has its parameter missing");
@@ -116,15 +141,27 @@ function processOptions() {
           .then((data: GithubUsers) => {
             console.log("The info to insert in db is: " +
               JSON.stringify({ 'login': data.login, 'name': data.name, 'company': data.company, 'location': data.location }));
-            let x = question("Do you confirm this data? (y/n)");
-            if (x.toLowerCase() == 'y') {
-              return db.one(`INSERT INTO github_users (login, name, company, location) 
+            question.prompt([
+              {
+                type: 'input',
+                name: 'confirmation',
+                message: 'Do you confirm this data? (y/n)'
+              }
+            ]).then((answers) => {
+
+              if (answers.confirmation.toLowerCase() == 'y') {
+                return db.one(`INSERT INTO github_users (login, name, company, location) 
                 VALUES ($[login], $[name], $[company], $[location]) RETURNING id`, data)
-            }
-            else { console.log("User was not inserted this time"); return { id: -1 } };
-          })
-          .then(({ id }) => (id > 0) ? console.log(id) : '')
-          .then(() => { (keys.indexOf('user') == keys.length - 1) ? process.exit(0) : "" });
+              }
+              else { console.log("User was not inserted this time"); return { id: -1 } };
+            })
+
+              .then(({ id }) => (id > 0) ? console.log(id) : '')
+              .then(() => { (keys.indexOf('user') == keys.length - 1) ? process.exit(0) : "" })
+          });
+        break;
+      case 'help':
+        helpConstructor().then((str) => { console.log(str); (keys.indexOf('help') == keys.length - 1) ?  process.exit(0) :'';})
         break;
       default:
         break;
