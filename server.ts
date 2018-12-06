@@ -178,7 +178,7 @@ function UsersInLocation(loc, indexCommand) {
     where table_name='github_users')`)
     .then(data => data.map(row => row.exists)[0])
     .then(bool => (bool) ?
-      db.any(`select * from github_users where lower(location) like lower(concat('%', $1,'%'))`, [loc])
+      db.any(`select * from github_users where location ilike '%${loc}%'`)
         .then(data => {
           if (data.length) {
             console.log("\nGitHub Users living in " + loc);
